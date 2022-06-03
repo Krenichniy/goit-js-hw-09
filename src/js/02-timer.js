@@ -13,17 +13,44 @@ const refs = {
   days: document.querySelector('span[data-days]'),
 };
 
+refs.btnStart.setAttribute('disabled', '');
+
 const timer = {
+  intervalValid: null,
+  userDate: null,
   start() {
-    const startTime = new Date('2022-06-04 14:25:00');
-    setInterval(() => {
-      const currentTime = new Date();
-      const timeDelta = startTime - currentTime;
+    this.intervalValid = setInterval(() => {
+      const currentTime = Date.now();
+      const timeDelta = this.userDate - currentTime;
+
+      if (timeDelta <= 0) {
+        this.stop();
+        return;
+      }
       const timeCounter = convertMs(timeDelta);
 
       updateUserInterface(timeCounter);
-      //   console.log(`${days} : ${hours}: ${minutes}: ${seconds}`);
+      refs.btnStart.setAttribute('disabled', '');
     }, 1000);
+  },
+
+  stop() {
+    clearInterval(this.intervalValid);
+    refs.btnStart.setAttribute('disabled', '');
+  },
+
+  checkDate(selectedDate) {
+    const chooseDate = Date.parse(selectedDate);
+    const dateNow = Date.now();
+    if (chooseDate <= dateNow) {
+      Notiflix.Notify.failure('Please enter valid date in the future');
+      calendar.open();
+    } else {
+      refs.btnStart.removeAttribute('disabled', '');
+      Notiflix.Notify.success('Timer is ready to start!');
+
+      this.userDate = chooseDate;
+    }
   },
 };
 
@@ -33,17 +60,11 @@ const options = {
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    console.log(selectedDates[0]);
+    timer.checkDate(selectedDates[0]);
   },
 };
 
-flatpickr(refs.userInput, options);
-
-// flatpickr.onClose();
-
-function pad(value) {
-  return String(value).padStart(2, '0');
-}
+const calendar = flatpickr(refs.userInput, options);
 
 function updateUserInterface({ days, hours, minutes, seconds }) {
   refs.seconds.textContent = seconds;
@@ -60,26 +81,19 @@ function convertMs(ms) {
   const day = hour * 24;
 
   // Remaining days
-  const days = pad(Math.floor(ms / day));
+  const days = addLeadingZero(Math.floor(ms / day));
   // Remaining hours
-  const hours = pad(Math.floor((ms % day) / hour));
+  const hours = addLeadingZero(Math.floor((ms % day) / hour));
   // Remaining minutes
-  const minutes = pad(Math.floor(((ms % day) % hour) / minute));
+  const minutes = addLeadingZero(Math.floor(((ms % day) % hour) / minute));
   // Remaining seconds
-  const seconds = pad(Math.floor((((ms % day) % hour) % minute) / second));
+  const seconds = addLeadingZero(Math.floor((((ms % day) % hour) % minute) / second));
 
   return { days, hours, minutes, seconds };
 }
 
-console.log(convertMs(2000)); // {days: 0, hours: 0, minutes: 0, seconds: 2}
-console.log(convertMs(140000)); // {days: 0, hours: 0, minutes: 2, seconds: 20}
-console.log(convertMs(24140000)); // {days: 0, hours: 6 minutes: 42, seconds: 20}
+function addLeadingZero(value) {
+  return String(value).padStart(2, '0');
+}
 
-// function addLeadingZero(value) {
-//   padStart();
-// }
-
-// Notiflix.Notify.success('Sol lucet omnibus');
-// Notiflix.Notify.failure('Qui timide rogat docet negare');
-
-refs.btnStart.addEventListener('click', timer.start);
+refs.btnStart.addEventListener('click', timer.start.bind(timer));
